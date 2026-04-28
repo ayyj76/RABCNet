@@ -1,0 +1,69 @@
+seed: 42
+output_dir: outputs/rpi_net_isic2017_mt_arch_v1_continue
+
+data:
+  root: datasets/ISIC2017
+  image_size: 224
+  use_hair_removal: false
+  use_tensor_cache: true
+  tensor_cache_dir: outputs/tensor_cache/isic2017
+  train_split: train
+  val_split: val
+  test_split: test
+  num_workers: 0
+  prefetch_factor: 4
+  persistent_workers: true
+  cache_images: false
+  cache_workers: 8
+
+pseudo:
+  output_dir: outputs/pseudo_labels/isic2017_train
+  force_regenerate: false
+  kmeans_clusters: 2
+  kmeans_threads: 10
+  batch_size: 8
+  threshold_method: otsu
+
+train:
+  epochs: 12
+  iterative_rounds: 0
+  iterative_epochs: 0
+  iterative_blend: 0.35
+  batch_size: 64
+  lr: 3.0e-5
+  weight_decay: 1.0e-4
+  amp: true
+  amp_dtype: bf16
+  grad_clip: 1.0
+  threshold: 0.3
+  use_mean_teacher: true
+  ema_decay: 0.99
+  consistency_weight: 0.2
+  consistency_rampup_epochs: 6
+  agreement_gamma: 1.0
+  pseudo_consensus_weight: 0.2
+  boundary_weight: 0.03
+  boundary_head_weight: 0.2
+  uncertainty_supervision_weight: 0.1
+  resume_strict: true
+  resume_load_optimizer: true
+  resume_load_scaler: true
+  resume_reset_epoch: false
+  resume_reset_best: false
+
+model:
+  hidden_dim: 128
+  dropout: 0.1
+  backbone: resnet50
+  backbone_pretrained: true
+  use_boundary_head: true
+  use_uncertainty_head: true
+  refine_with_heads: true
+
+runtime:
+  device: cuda
+  save_every: 2
+  cpu_threads: 12
+  tf32: true
+  channels_last: true
+  compile: false

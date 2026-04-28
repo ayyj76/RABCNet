@@ -1,0 +1,49 @@
+seed: 42
+output_dir: outputs/rpi_net_isic2017_smoke
+
+data:
+  root: datasets/ISIC2017
+  image_size: 224
+  train_split: train
+  val_split: val
+  test_split: test
+  num_workers: 0
+  prefetch_factor: 4
+  persistent_workers: true
+  cache_images: true
+  cache_workers: 4
+  max_train_samples: 128
+  max_val_samples: 64
+  max_test_samples: 64
+
+pseudo:
+  output_dir: outputs/pseudo_labels/isic2017_train_smoke
+  force_regenerate: false
+  kmeans_clusters: 2
+  kmeans_threads: 6
+  batch_size: 8
+  threshold_method: otsu
+
+train:
+  epochs: 2
+  iterative_rounds: 0
+  iterative_epochs: 0
+  iterative_blend: 0.35
+  batch_size: 16
+  lr: 1.0e-4
+  weight_decay: 1.0e-4
+  amp: true
+  grad_clip: 1.0
+  threshold: 0.3
+
+model:
+  hidden_dim: 96
+  dropout: 0.1
+
+runtime:
+  device: cuda
+  save_every: 1
+  cpu_threads: 12
+  tf32: true
+  channels_last: true
+  compile: false

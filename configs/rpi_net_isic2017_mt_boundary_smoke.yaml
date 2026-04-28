@@ -1,0 +1,60 @@
+seed: 42
+output_dir: outputs/rpi_net_isic2017_mt_boundary_smoke
+
+data:
+  root: datasets/ISIC2017
+  image_size: 224
+  use_hair_removal: false
+  use_tensor_cache: true
+  tensor_cache_dir: outputs/tensor_cache/isic2017
+  train_split: train
+  val_split: val
+  test_split: test
+  num_workers: 0
+  prefetch_factor: 4
+  persistent_workers: true
+  cache_images: false
+  cache_workers: 8
+  max_train_samples: 128
+  max_val_samples: 32
+  max_test_samples: 32
+
+pseudo:
+  output_dir: outputs/pseudo_labels/isic2017_train
+  force_regenerate: false
+  kmeans_clusters: 2
+  kmeans_threads: 10
+  batch_size: 8
+  threshold_method: otsu
+
+train:
+  epochs: 71
+  iterative_rounds: 0
+  iterative_epochs: 0
+  iterative_blend: 0.35
+  batch_size: 64
+  lr: 3.0e-5
+  weight_decay: 1.0e-4
+  amp: true
+  amp_dtype: bf16
+  grad_clip: 1.0
+  threshold: 0.15
+  use_mean_teacher: true
+  ema_decay: 0.99
+  consistency_weight: 0.2
+  consistency_rampup_epochs: 8
+  agreement_gamma: 1.0
+  pseudo_consensus_weight: 0.2
+  boundary_weight: 0.05
+
+model:
+  hidden_dim: 128
+  dropout: 0.1
+
+runtime:
+  device: cuda
+  save_every: 5
+  cpu_threads: 12
+  tf32: true
+  channels_last: true
+  compile: false

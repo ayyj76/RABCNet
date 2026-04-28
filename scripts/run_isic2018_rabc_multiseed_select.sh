@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+run_select() {
+  local cfg="$1"
+  local ckpt="$2"
+  local out="$3"
+  PYTHONPATH=src python3 scripts/select_inference_by_val.py \
+    --config "$cfg" \
+    --checkpoint "$ckpt" \
+    --threshold-min 0.09 \
+    --threshold-max 0.31 \
+    --threshold-step 0.02 \
+    --tta-modes none,flip4 \
+    --min-areas 0 \
+    --keep-largest-options false,true \
+    --fill-holes-options false,true \
+    --dilation-iters-list 0 \
+    --adaptive-scales 0.0 \
+    --gaussian-sigmas 0.0 \
+    --objective jac \
+    --output "$out"
+}
+
+for seed in 41 42 43; do
+  run_select \
+    "configs/generated/rpi_net_isic2018_unsup_v20_sigma_only_s${seed}.yaml" \
+    "outputs/innovation/isic2018_norabc_multiseed/rpi_net_isic2018_norabc_s${seed}/checkpoints/best.pt" \
+    "outputs/innovation/isic2018_norabc_s${seed}_select_jac.json"
+
+  run_select \
+    "configs/generated/rpi_net_isic2018_innovation_rabc_s${seed}.yaml" \
+    "outputs/innovation/isic2018_rabc_multiseed/rpi_net_isic2018_rabc_s${seed}/checkpoints/best.pt" \
+    "outputs/innovation/isic2018_rabc_s${seed}_select_jac.json"
+done

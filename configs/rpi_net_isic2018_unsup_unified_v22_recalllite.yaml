@@ -1,0 +1,115 @@
+seed: 42
+output_dir: outputs/rpi_net_isic2018_unsup_unified_v22_recalllite
+
+data:
+  root: datasets/ISIC2018
+  image_size: 224
+  use_hair_removal: false
+  use_tensor_cache: false
+  train_split: train
+  val_split: val
+  test_split: test
+  num_workers: 4
+  prefetch_factor: 2
+  persistent_workers: true
+  eval_num_workers: 2
+  eval_prefetch_factor: 2
+  cache_images: false
+  cache_workers: 4
+
+pseudo:
+  output_dir: outputs/pseudo_labels_v18/isic2018_train
+  force_regenerate: false
+  kmeans_clusters: 2
+  kmeans_threads: 8
+  batch_size: 8
+  threshold_method: otsu
+  consensus_blend: 0.25
+
+train:
+  epochs: 4
+  iterative_rounds: 0
+  iterative_epochs: 0
+  batch_size: 12
+  lr: 5.0e-6
+  weight_decay: 1.0e-4
+  amp: true
+  amp_dtype: bf16
+  grad_clip: 1.0
+  threshold: 0.30
+  use_mean_teacher: false
+  ema_decay: 0.99
+  consistency_weight: 0.0
+  consistency_rampup_epochs: 0
+  source_distill_weight: 0.0
+  source_distill_rampup_epochs: 0
+  agreement_gamma: 1.0
+  pseudo_consensus_weight: 0.10
+  boundary_weight: 0.02
+  boundary_head_weight: 0.10
+  uncertainty_supervision_weight: 0.05
+  recall_candidate_weight: 0.05
+  recall_candidate_dilate_kernel: 3
+  recall_candidate_pos_weight: 2.0
+  multiscale_recall_weight: 0.05
+  multiscale_recall_dilate_kernel: 3
+  multiscale_recall_pos_weight: 2.0
+  aux_consensus_weight: 0.03
+  detail_consensus_weight: 0.05
+  supervised_weight: 0.0
+  labeled_ratio: 0.0
+  pseudo_tversky_weight: 0.20
+  pseudo_tversky_alpha: 0.45
+  pseudo_tversky_beta: 0.55
+  pseudo_tversky_gamma: 1.00
+  supervised_tversky_weight: 0.0
+  supervised_tversky_alpha: 0.65
+  supervised_tversky_beta: 0.35
+  supervised_tversky_gamma: 1.00
+  resume_strict: false
+  resume_load_optimizer: false
+  resume_load_scaler: false
+  resume_reset_epoch: true
+  resume_reset_best: true
+  freeze_segmentation_path: true
+  freeze_bn_stats: true
+  trainable_prefixes: [pseudo_encoder, ipc_attn, pia_attn, sigma_heads, recall_recover_refine, recall_candidate_head, multiscale_recall_head]
+
+model:
+  hidden_dim: 128
+  dropout: 0.1
+  backbone: convnext_tiny
+  backbone_pretrained: true
+  use_boundary_head: true
+  use_uncertainty_head: true
+  refine_with_heads: true
+  use_aspp: false
+  use_aux_head: true
+  use_se_context: true
+  use_detail_fusion: true
+  use_coord_attn: true
+  use_edge_prompt: true
+  use_dual_supervised_head: false
+  use_eca_context: true
+  use_ema_context: true
+  use_cbam_decoder: true
+  use_simam_refine: true
+  use_safm_decoder: true
+  use_uncertainty_gated_refine: true
+  use_sk_context: true
+  use_triplet_decoder: true
+  use_msaa_fusion: true
+  use_ega_refine: false
+  use_cot_context: false
+  use_lsk_decoder: false
+  use_recall_recover_refine: true
+  use_recall_candidate_head: true
+  use_multiscale_recall_head: true
+
+runtime:
+  device: cuda
+  save_every: 1
+  cpu_threads: 8
+  tf32: true
+  channels_last: true
+  compile: false

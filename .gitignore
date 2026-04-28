@@ -1,0 +1,79 @@
+# Python cache / environments
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# Local datasets and runtime outputs
+datasets/
+outputs/
+runs/
+wandb/
+checkpoints/
+*.ckpt
+*.pth
+*.pt
+*.onnx
+*.npz
+*.npy
+
+# Large/generated experiment assets
+*.log
+*.tmp
+*.bak
+*.swp
+.DS_Store
+Thumbs.db
+
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+*.out
+*.synctex.gz
+*.toc
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+*.abs
+*.bcf
+*.run.xml
+*.xdv
+
+# Keep manuscript sources, but ignore generated PDFs/zips by default
+paper/**/*.pdf
+paper/**/*.zip
+paper/**/log.txt
+
+# Tool/runtime state
+.omx/state/
+.omx/logs/
+.omx/notepad.md
+.claude/
+.codex
+
+# OS / WSL misc
+图/
+
+# Agent/tool local state - do not publish
+.omx/
+
+# Paper/manuscript workspace is not part of the public code release
+paper/
+draw/figs/
+draw/results/
+useful_module/*.pdf
+useful_module/**/.idea/
+AGENTS.md
+useful_module/
