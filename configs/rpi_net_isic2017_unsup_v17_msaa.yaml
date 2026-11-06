@@ -5,13 +5,13 @@ data:
   root: datasets/ISIC2017
   image_size: 224
   use_hair_removal: false
-  use_tensor_cache: true
+  use_tensor_cache: false
   tensor_cache_dir: outputs/tensor_cache/isic2017_v15_itercache
   train_split: train
   val_split: val
   test_split: test
-  num_workers: 8
-  prefetch_factor: 8
+  num_workers: 4
+  prefetch_factor: 2
   persistent_workers: true
   cache_images: false
   cache_workers: 8
