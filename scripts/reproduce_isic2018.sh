@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# reproduce_isic2018.sh: End-to-end Reproduction Pipeline for ISIC 2018 (Table 5)
+# reproduce_isic2018.sh: End-to-end Pipeline for ISIC 2018 Benchmark
 #
 # Hardware Specification:
 #   Benchmarked on NVIDIA GeForce RTX 4060 Ti (16 GB VRAM) under Ubuntu Linux.
@@ -186,7 +186,7 @@ run_eval() {
 
     log_info "Evaluating on ISIC-2018 test split (n=1,000)..."
     log_info "Operating Point: --threshold 0.25 --tta flip4 --keep-largest --fill-holes"
-    log_info "Expected Metrics (Table 5): DICE ~85.67%, JAC ~79.14%, ACC ~91.93%"
+    log_info "Expected Metrics (ISIC-2018 Test): DICE ~85.67%, JAC ~79.14%, ACC ~91.93%"
 
     python3 scripts/evaluate_rpi_net.py \
         --config "$CFG_STAGE3" \
