@@ -33,12 +33,12 @@ export PYTHONUNBUFFERED=1
 
 # Config paths
 CFG_STAGE1="configs/rpi_net_isic2017_unsup_v17_msaa.yaml"
-CFG_STAGE2="configs/rpi_net_isic2018_unsup_v19_distill.yaml"
+CFG_STAGE2="configs/rpi_net_isic2018_unsup_v19_distill_short.yaml"
 CFG_STAGE3="configs/rpi_net_isic2018_innovation_rabc.yaml"
 
 # Default checkpoint paths
 CKPT_STAGE1="${STAGE1_CKPT:-outputs/rpi_net_isic2017_unsup_v17_msaa/checkpoints/best.pt}"
-CKPT_STAGE2="${STAGE2_CKPT:-outputs/rpi_net_isic2018_unsup_v19_distill/checkpoints/best.pt}"
+CKPT_STAGE2="${STAGE2_CKPT:-outputs/rpi_net_isic2018_unsup_v19_distill_short/checkpoints/best.pt}"
 CKPT_STAGE3="${STAGE3_CKPT:-outputs/innovation/rpi_net_isic2018_rabc/checkpoints/best.pt}"
 
 log_info() {

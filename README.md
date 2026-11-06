@@ -124,9 +124,9 @@ The unsupervised adaptation to ISIC-2018 is organized into three sequential stag
        ▼ (outputs/rpi_net_isic2017_unsup_v17_msaa/checkpoints/best.pt)
 [Stage 2: Source Distillation]
   Dataset: ISIC-2018 (train, unsupervised) + Stage 1 Teacher
-  Config:  configs/rpi_net_isic2018_unsup_v19_distill.yaml
+  Config:  configs/rpi_net_isic2018_unsup_v19_distill_short.yaml
        │
-       ▼ (outputs/rpi_net_isic2018_unsup_v19_distill/checkpoints/best.pt)
+       ▼ (outputs/rpi_net_isic2018_unsup_v19_distill_short/checkpoints/best.pt)
 [Stage 3: Target Reliability Adaptation]
   Dataset: ISIC-2018 (train, unsupervised) with RABC
   Config:  configs/rpi_net_isic2018_innovation_rabc.yaml
@@ -151,25 +151,25 @@ PYTHONPATH=src python3 scripts/train_rpi_net.py \
 Output checkpoint: `outputs/rpi_net_isic2017_unsup_v17_msaa/checkpoints/best.pt`.
 
 #### Stage 2: ISIC-2018 Source-Output Distillation
-Distill the segmentation prior from the frozen Stage 1 source teacher to the ISIC-2018 target domain:
+Distill the segmentation prior from the frozen Stage 1 source teacher to the ISIC-2018 target domain. We employ the compact distillation schedule (`v19_distill_short.yaml`: 6 epochs, strong teacher retention `source_distill_weight: 0.80`, no self-training feedback rounds) to transfer clean source features without letting noisy target pseudo-labels drift the representation:
 ```bash
 # 1. Generate pseudo-labels for ISIC-2018
 PYTHONPATH=src python3 scripts/generate_pseudo_labels.py \
-  --config configs/rpi_net_isic2018_unsup_v19_distill.yaml \
+  --config configs/rpi_net_isic2018_unsup_v19_distill_short.yaml \
   --split train
 
 # 2. Train distillation model on ISIC-2018 (teacher loaded automatically)
 PYTHONPATH=src python3 scripts/train_rpi_net.py \
-  --config configs/rpi_net_isic2018_unsup_v19_distill.yaml
+  --config configs/rpi_net_isic2018_unsup_v19_distill_short.yaml
 ```
-Output checkpoint: `outputs/rpi_net_isic2018_unsup_v19_distill/checkpoints/best.pt`.
+Output checkpoint: `outputs/rpi_net_isic2018_unsup_v19_distill_short/checkpoints/best.pt`.
 
 #### Stage 3: Target Domain Adaptation with RABC
 
 > [!WARNING] **CRITICAL NOTICE: Mandatory `--resume` Flag**
 > Configuration `configs/rpi_net_isic2018_innovation_rabc.yaml` enforces `freeze_segmentation_path: true`. This intentionally freezes the ConvNeXt-Tiny encoder, decoder, and segmentation heads to prevent noisy target pseudo-labels from corrupting the deployed image-to-mask mapping, restricting gradient updates strictly to the reliability branch and the lightweight RABC calibration head (only 3.50% of model parameters).
 > 
-> **You MUST provide `--resume outputs/rpi_net_isic2018_unsup_v19_distill/checkpoints/best.pt`**. If `--resume` is omitted, the segmentation backbone remains randomly initialized and frozen throughout training, leading to complete training failure (near 0% DICE).
+> **You MUST provide `--resume outputs/rpi_net_isic2018_unsup_v19_distill_short/checkpoints/best.pt`** (or ensure `resume_checkpoint` in the YAML points to it). If `--resume` is omitted, the segmentation backbone remains randomly initialized and frozen throughout training, leading to complete training failure (near 0% DICE).
 
 ```bash
 # 1. Generate pseudo-labels for adaptation
@@ -180,7 +180,7 @@ PYTHONPATH=src python3 scripts/generate_pseudo_labels.py \
 # 2. Adapt reliability branch and RABC head (MUST pass --resume)
 PYTHONPATH=src python3 scripts/train_rpi_net.py \
   --config configs/rpi_net_isic2018_innovation_rabc.yaml \
-  --resume outputs/rpi_net_isic2018_unsup_v19_distill/checkpoints/best.pt
+  --resume outputs/rpi_net_isic2018_unsup_v19_distill_short/checkpoints/best.pt
 ```
 Output checkpoint: `outputs/innovation/rpi_net_isic2018_rabc/checkpoints/best.pt`.
 
