@@ -30,6 +30,7 @@ from rpi_net.losses import (
     far_background_preservation_loss,
     low_threshold_background_loss,
     pseudo_consensus_tversky_loss,
+    rabc_delta_direction_loss,
     recall_candidate_supervision_loss,
     supervised_segmentation_tversky_loss,
     uncertainty_supervision_loss,
@@ -137,6 +138,9 @@ def model_kwargs_from_cfg(cfg: Dict) -> Dict:
         "use_recall_candidate_head": bool(model_cfg.get("use_recall_candidate_head", False)),
         "use_multiscale_recall_head": bool(model_cfg.get("use_multiscale_recall_head", False)),
         "use_rabc": bool(model_cfg.get("use_rabc", False)),
+        "rabc_mixer_mode": str(model_cfg.get("rabc_mixer_mode", "mean")),
+        "rabc_candidate_intercept": float(model_cfg.get("rabc_candidate_intercept", 0.35)),
+        "rabc_candidate_uncertainty": float(model_cfg.get("rabc_candidate_uncertainty", 0.65)),
         "use_brr": bool(model_cfg.get("use_brr", False)),
         "use_focal_context": bool(model_cfg.get("use_focal_context", False)),
         "use_cga_fusion": bool(model_cfg.get("use_cga_fusion", False)),
@@ -394,6 +398,9 @@ def train_one_epoch(
     rabc_boundary_weight: float,
     rabc_far_bg_weight: float,
     rabc_sparsity_weight: float,
+    rabc_delta_direction_weight: float,
+    rabc_delta_direction_margin: float,
+    rabc_delta_direction_fp_weight: float,
     brr_candidate_weight: float,
     brr_boundary_weight: float,
     brr_far_bg_weight: float,
@@ -444,6 +451,7 @@ def train_one_epoch(
     rabc_boundary_loss_meter = AverageMeter()
     rabc_far_bg_loss_meter = AverageMeter()
     rabc_sparsity_loss_meter = AverageMeter()
+    rabc_delta_direction_loss_meter = AverageMeter()
     brr_candidate_loss_meter = AverageMeter()
     brr_boundary_loss_meter = AverageMeter()
     brr_far_bg_loss_meter = AverageMeter()
@@ -591,6 +599,7 @@ def train_one_epoch(
             rabc_boundary_loss = torch.zeros((), device=device, dtype=train_logits.dtype)
             rabc_far_bg_loss = torch.zeros((), device=device, dtype=train_logits.dtype)
             rabc_sparsity_loss = torch.zeros((), device=device, dtype=train_logits.dtype)
+            rabc_delta_direction = torch.zeros((), device=device, dtype=train_logits.dtype)
             rabc_delta = outputs.get("rabc_delta")
             if isinstance(rabc_delta, torch.Tensor):
                 base_train_logits = outputs.get("base_train_logits")
@@ -608,6 +617,18 @@ def train_one_epoch(
                         focus_boost=2.0,
                     )
                     total_loss = total_loss + rabc_boundary_weight * rabc_boundary_loss
+                if rabc_delta_direction_weight > 0.0:
+                    rabc_delta_direction = rabc_delta_direction_loss(
+                        rabc_delta,
+                        pseudo,
+                        base_logits=base_train_logits,
+                        boundary_logits=boundary_logits if isinstance(boundary_logits, torch.Tensor) else None,
+                        uncertainty_logits=uncertainty_logits if isinstance(uncertainty_logits, torch.Tensor) else None,
+                        margin=rabc_delta_direction_margin,
+                        boundary_kernel=5,
+                        fp_weight=rabc_delta_direction_fp_weight,
+                    )
+                    total_loss = total_loss + rabc_delta_direction_weight * rabc_delta_direction
                 if rabc_far_bg_weight > 0.0:
                     rabc_far_bg_loss = far_background_preservation_loss(
                         train_logits,
@@ -782,6 +803,7 @@ def train_one_epoch(
         rabc_boundary_loss_meter.update(rabc_boundary_loss.item(), n=bs)
         rabc_far_bg_loss_meter.update(rabc_far_bg_loss.item(), n=bs)
         rabc_sparsity_loss_meter.update(rabc_sparsity_loss.item(), n=bs)
+        rabc_delta_direction_loss_meter.update(rabc_delta_direction.item(), n=bs)
         brr_candidate_loss_meter.update(brr_candidate_loss.item(), n=bs)
         brr_boundary_loss_meter.update(brr_boundary_loss.item(), n=bs)
         brr_far_bg_loss_meter.update(brr_far_bg_loss.item(), n=bs)
@@ -809,6 +831,7 @@ def train_one_epoch(
         "train_rabc_boundary_loss": rabc_boundary_loss_meter.avg,
         "train_rabc_far_bg_loss": rabc_far_bg_loss_meter.avg,
         "train_rabc_sparsity_loss": rabc_sparsity_loss_meter.avg,
+        "train_rabc_delta_direction_loss": rabc_delta_direction_loss_meter.avg,
         "train_brr_candidate_loss": brr_candidate_loss_meter.avg,
         "train_brr_boundary_loss": brr_boundary_loss_meter.avg,
         "train_brr_far_bg_loss": brr_far_bg_loss_meter.avg,
@@ -1095,6 +1118,11 @@ def main() -> None:
             f"trainable_params={t_cnt}, frozen_params={f_cnt}, "
             f"freeze_bn_stats={freeze_bn_stats}"
         )
+    elif freeze_bn_stats:
+        # A fully trainable adaptation can still keep running statistics fixed
+        # for a small target domain. Affine BN parameters remain trainable.
+        bn_trainable_prefixes = ()
+        print("Applied freeze_bn_stats to all BatchNorm running statistics")
 
     optim_params = [p for p in model.parameters() if p.requires_grad]
     if len(optim_params) == 0:
@@ -1149,6 +1177,9 @@ def main() -> None:
     rabc_boundary_weight = float(cfg["train"].get("rabc_boundary_weight", 0.0))
     rabc_far_bg_weight = float(cfg["train"].get("rabc_far_bg_weight", 0.0))
     rabc_sparsity_weight = float(cfg["train"].get("rabc_sparsity_weight", 0.0))
+    rabc_delta_direction_weight = float(cfg["train"].get("rabc_delta_direction_weight", 0.0))
+    rabc_delta_direction_margin = float(cfg["train"].get("rabc_delta_direction_margin", 0.05))
+    rabc_delta_direction_fp_weight = float(cfg["train"].get("rabc_delta_direction_fp_weight", 0.5))
     brr_candidate_weight = float(cfg["train"].get("brr_candidate_weight", 0.0))
     brr_boundary_weight = float(cfg["train"].get("brr_boundary_weight", 0.0))
     brr_far_bg_weight = float(cfg["train"].get("brr_far_bg_weight", 0.0))
@@ -1205,8 +1236,12 @@ def main() -> None:
     best_jac = -1.0
     best_state = None
 
-    if args.resume:
-        ckpt = torch.load(args.resume, map_location="cpu")
+    resume_path = args.resume or cfg["train"].get("resume_checkpoint")
+    if resume_path:
+        resume_path = str(resume_path)
+        if not Path(resume_path).exists():
+            raise FileNotFoundError(f"resume checkpoint not found: {resume_path}")
+        ckpt = torch.load(resume_path, map_location="cpu")
         resume_strict = bool(cfg["train"].get("resume_strict", True))
         load_info = load_model_state(model, ckpt["model"], strict=resume_strict)
         if not resume_strict:
@@ -1242,7 +1277,7 @@ def main() -> None:
         else:
             best_jac = float(ckpt.get("best_jac", -1.0))
         best_state = copy.deepcopy(get_model_state(model))
-        print(f"Resumed from epoch {start_epoch}, best_jac={best_jac:.4f}")
+        print(f"Resumed from {resume_path}, epoch {start_epoch}, best_jac={best_jac:.4f}")
         if teacher_model is not None:
             teacher_state = ckpt.get("teacher_model")
             if teacher_state is not None:
@@ -1310,6 +1345,9 @@ def main() -> None:
             rabc_boundary_weight=rabc_boundary_weight,
             rabc_far_bg_weight=rabc_far_bg_weight,
             rabc_sparsity_weight=rabc_sparsity_weight,
+            rabc_delta_direction_weight=rabc_delta_direction_weight,
+            rabc_delta_direction_margin=rabc_delta_direction_margin,
+            rabc_delta_direction_fp_weight=rabc_delta_direction_fp_weight,
             brr_candidate_weight=brr_candidate_weight,
             brr_boundary_weight=brr_boundary_weight,
             brr_far_bg_weight=brr_far_bg_weight,
@@ -1417,6 +1455,9 @@ def main() -> None:
                 rabc_boundary_weight=rabc_boundary_weight,
                 rabc_far_bg_weight=rabc_far_bg_weight,
                 rabc_sparsity_weight=rabc_sparsity_weight,
+                rabc_delta_direction_weight=rabc_delta_direction_weight,
+                rabc_delta_direction_margin=rabc_delta_direction_margin,
+                rabc_delta_direction_fp_weight=rabc_delta_direction_fp_weight,
                 brr_candidate_weight=brr_candidate_weight,
                 brr_boundary_weight=brr_boundary_weight,
                 brr_far_bg_weight=brr_far_bg_weight,

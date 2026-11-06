@@ -2,7 +2,7 @@
 """Render a supplementary qualitative comparison with a supervised upper bound.
 
 Rows: selected ISIC-2018 test cases.
-Cols: Image | GT | RPI-Net | MedSAM | TransFuse | Ours
+Cols: Image | GT | RPI-inspired anchor | MedSAM | TransFuse | Ours
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ SELECTED_IDS = [
 MODELS = {
     "rpinet": {
         "kind": "rpi",
-        "title": "RPI-Net",
+        "title": "RPI-inspired anchor",
         "color": "#c15600",
         "overlay_rgb": (210, 90, 0),
         "config": ROOT / "configs" / "rpi_net_isic2018_unsup_v17_transfer.yaml",

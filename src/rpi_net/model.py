@@ -1290,9 +1290,18 @@ class ReliabilityAdaptiveBoundaryCalibration(nn.Module):
     current segmentation probability. This keeps calibration local and
     image-adaptive rather than relying on a fixed global Gaussian kernel.
     """
-    def __init__(self, dim: int) -> None:
+    def __init__(
+        self,
+        dim: int,
+        mixer_mode: str = "mean",
+        candidate_intercept: float = 0.35,
+        candidate_uncertainty: float = 0.65,
+    ) -> None:
         super().__init__()
         mid = max(16, dim // 2)
+        self.mixer_mode = mixer_mode
+        self.candidate_intercept = float(candidate_intercept)
+        self.candidate_uncertainty = float(candidate_uncertainty)
         self.context = nn.Sequential(
             ConvBNAct(dim + 3, mid, k=1, p=0),
             ConvBNAct(mid, mid),
@@ -1308,6 +1317,50 @@ class ReliabilityAdaptiveBoundaryCalibration(nn.Module):
         self.local_mixer = nn.Conv2d(1, 1, kernel_size=3, padding=1, bias=False)
         with torch.no_grad():
             self.local_mixer.weight.fill_(1.0 / 9.0)
+        if self.mixer_mode in {"orientation", "orientation_strong"}:
+            self.orientation_head = nn.Sequential(
+                ConvBNAct(dim + 3, mid, k=1, p=0),
+                ConvBNAct(mid, mid),
+                nn.Conv2d(mid, 5, kernel_size=1, bias=True),
+            )
+            with torch.no_grad():
+                nn.init.zeros_(self.orientation_head[-1].weight)
+                nn.init.zeros_(self.orientation_head[-1].bias)
+                if self.mixer_mode == "orientation":
+                    self.orientation_head[-1].bias[-1] = 4.0
+            kernels = torch.zeros(5, 1, 3, 3, dtype=torch.float32)
+            kernels[0, 0, 1, :] = 1.0 / 3.0
+            kernels[1, 0, :, 1] = 1.0 / 3.0
+            kernels[2, 0, torch.arange(3), torch.arange(3)] = 1.0 / 3.0
+            kernels[3, 0, torch.arange(3), torch.tensor([2, 1, 0])] = 1.0 / 3.0
+            kernels[4, 0, :, :] = 1.0 / 9.0
+            self.register_buffer("orientation_kernels", kernels, persistent=False)
+            blend_init = 0.0 if self.mixer_mode == "orientation_strong" else -2.0
+            self.orientation_blend_logit = nn.Parameter(torch.tensor(blend_init, dtype=torch.float32))
+        else:
+            self.orientation_head = None
+            self.orientation_blend_logit = None
+        if self.mixer_mode in {"multiscale", "multiscale_strong"}:
+            self.scale_head = nn.Sequential(
+                ConvBNAct(dim + 3, mid, k=1, p=0),
+                ConvBNAct(mid, mid),
+                nn.Conv2d(mid, 3, kernel_size=1, bias=True),
+            )
+            with torch.no_grad():
+                nn.init.zeros_(self.scale_head[-1].weight)
+                nn.init.zeros_(self.scale_head[-1].bias)
+                if self.mixer_mode == "multiscale":
+                    self.scale_head[-1].bias[0] = 2.0
+                    self.scale_head[-1].bias[2] = -2.0
+            kernels = torch.zeros(3, 1, 7, 7, dtype=torch.float32)
+            kernels[0, 0, 2:5, 2:5] = 1.0 / 9.0
+            kernels[1, 0, 1:6, 1:6] = 1.0 / 25.0
+            kernels[2, 0, :, :] = 1.0 / 49.0
+            self.register_buffer("scale_kernels", kernels, persistent=False)
+            self.scale_blend_logit = nn.Parameter(torch.tensor(0.0, dtype=torch.float32))
+        else:
+            self.scale_head = None
+            self.scale_blend_logit = None
         self.residual_delta = nn.Conv2d(dim, 1, kernel_size=1, bias=True)
         nn.init.zeros_(self.residual_delta.weight)
         nn.init.zeros_(self.residual_delta.bias)
@@ -1332,13 +1385,29 @@ class ReliabilityAdaptiveBoundaryCalibration(nn.Module):
             else torch.zeros_like(logits)
         )
         p = torch.sigmoid(logits)
-        candidate = boundary_prob * (0.35 + 0.65 * uncertainty_prob) * (1.0 - p)
+        candidate = boundary_prob * (
+            self.candidate_intercept + self.candidate_uncertainty * uncertainty_prob
+        ) * (1.0 - p)
         ctx = self.context(torch.cat([feat, boundary_prob, uncertainty_prob, p], dim=1))
         alpha_map = torch.sigmoid(ctx[:, 0:1]) * candidate
         tau_shift = torch.tanh(ctx[:, 1:2]) * F.softplus(self.tau_scale).to(dtype=logits.dtype) * candidate
         suppress_gate = torch.sigmoid(ctx[:, 2:3])
 
         local_logits = self.local_mixer(logits)
+        if self.orientation_head is not None:
+            rabc_inputs = torch.cat([feat, boundary_prob, uncertainty_prob, p], dim=1)
+            orientation_weights = torch.softmax(self.orientation_head(rabc_inputs), dim=1)
+            oriented = F.conv2d(logits, self.orientation_kernels.to(dtype=logits.dtype), padding=1)
+            oriented_logits = (orientation_weights.to(dtype=logits.dtype) * oriented).sum(dim=1, keepdim=True)
+            blend = torch.sigmoid(self.orientation_blend_logit).to(dtype=logits.dtype)
+            local_logits = local_logits + blend * (oriented_logits - local_logits)
+        if self.scale_head is not None:
+            rabc_inputs = torch.cat([feat, boundary_prob, uncertainty_prob, p], dim=1)
+            scale_weights = torch.softmax(self.scale_head(rabc_inputs), dim=1)
+            scaled = F.conv2d(logits, self.scale_kernels.to(dtype=logits.dtype), padding=3)
+            scaled_logits = (scale_weights.to(dtype=logits.dtype) * scaled).sum(dim=1, keepdim=True)
+            blend = torch.sigmoid(self.scale_blend_logit).to(dtype=logits.dtype)
+            local_logits = local_logits + blend * (scaled_logits - local_logits)
         pos_delta = alpha_map * (local_logits - logits) + tau_shift
         far_bg = (1.0 - boundary_prob) * (1.0 - uncertainty_prob) * p
         neg_delta = suppress_gate * F.softplus(self.bg_scale).to(dtype=logits.dtype) * far_bg
@@ -1583,6 +1652,9 @@ class RPINet(nn.Module):
         use_recall_candidate_head: bool = False,
         use_multiscale_recall_head: bool = False,
         use_rabc: bool = False,
+        rabc_mixer_mode: str = "mean",
+        rabc_candidate_intercept: float = 0.35,
+        rabc_candidate_uncertainty: float = 0.65,
         use_brr: bool = False,
         use_focal_context: bool = False,
         use_cga_fusion: bool = False,
@@ -1627,6 +1699,9 @@ class RPINet(nn.Module):
         self.use_recall_candidate_head = bool(use_recall_candidate_head)
         self.use_multiscale_recall_head = bool(use_multiscale_recall_head)
         self.use_rabc = bool(use_rabc)
+        self.rabc_mixer_mode = rabc_mixer_mode
+        self.rabc_candidate_intercept = float(rabc_candidate_intercept)
+        self.rabc_candidate_uncertainty = float(rabc_candidate_uncertainty)
         self.use_brr = bool(use_brr)
         self.use_focal_context = bool(use_focal_context)
         self.use_cga_fusion = bool(use_cga_fusion)
@@ -1719,7 +1794,16 @@ class RPINet(nn.Module):
         self.recall_recover_refine = RecallRecoveryRefine(hidden_dim) if self.use_recall_recover_refine else None
         self.recall_candidate_head = RecallCandidateHead(hidden_dim) if self.use_recall_candidate_head else None
         self.multiscale_recall_head = MultiScaleRecallHead(hidden_dim) if self.use_multiscale_recall_head else None
-        self.rabc = ReliabilityAdaptiveBoundaryCalibration(hidden_dim) if self.use_rabc else None
+        self.rabc = (
+            ReliabilityAdaptiveBoundaryCalibration(
+                hidden_dim,
+                mixer_mode=self.rabc_mixer_mode,
+                candidate_intercept=self.rabc_candidate_intercept,
+                candidate_uncertainty=self.rabc_candidate_uncertainty,
+            )
+            if self.use_rabc
+            else None
+        )
         self.brr = BoundaryRecallRecalibration(hidden_dim) if self.use_brr else None
         if self.use_dual_supervised_head:
             self.supervised_head = nn.Conv2d(hidden_dim, 1, kernel_size=1)

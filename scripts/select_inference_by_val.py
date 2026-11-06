@@ -68,6 +68,7 @@ def model_kwargs_from_cfg(cfg: dict) -> dict:
         "use_recall_candidate_head": bool(model_cfg.get("use_recall_candidate_head", False)),
         "use_multiscale_recall_head": bool(model_cfg.get("use_multiscale_recall_head", False)),
         "use_rabc": bool(model_cfg.get("use_rabc", False)),
+        "rabc_mixer_mode": str(model_cfg.get("rabc_mixer_mode", "mean")),
         "use_brr": bool(model_cfg.get("use_brr", False)),
         "use_focal_context": bool(model_cfg.get("use_focal_context", False)),
         "use_cga_fusion": bool(model_cfg.get("use_cga_fusion", False)),

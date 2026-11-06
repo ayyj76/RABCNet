@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Fig 2: Qualitative segmentation comparison.
-Each row: Image | GT | P0 (w/o GPS, τ=0.30) | Full Pipeline | Error Map
+Each row: Image | GT | Raw P0 | RABC-Net | Error Map
 3 datasets × 2 samples each = 6 rows total.
 Samples are specified by ID from pre-selected candidates.
 """
@@ -34,29 +34,29 @@ IMAGENET_STD  = np.array([0.229, 0.224, 0.225], dtype=np.float32)
 DATASETS = [
     dict(
         name="ISIC-2017",
-        config="configs/rpi_net_isic2017_unsup_v56_ega_bgdecouple_bgsup_recallrefine_headft.yaml",
-        ckpt="outputs/rpi_net_isic2017_unsup_v56_ega_bgdecouple_bgsup_recallrefine_headft/checkpoints/best.pt",
-        threshold=0.02, sigma=1.0, tta="flip4",
+        config="configs/rpi_net_isic2017_innovation_rabc.yaml",
+        ckpt="outputs/innovation/rpi_net_isic2017_rabc_v2/checkpoints/best.pt",
+        threshold=0.30, sigma=0.0, tta="flip4",
         fill_holes=True, keep_largest=True,
         no_tensor_cache=True,
-        # 候选: ISIC_0012375(Δ+0.399) ISIC_0012432(Δ+0.393) ISIC_0015947(Δ+0.388) ISIC_0014423(Δ+0.372)
-        selected_ids=["ISIC_0012432", "ISIC_0015947"],
+        # 候选: ISIC_0014284(Δ+0.237) ISIC_0015309(Δ+0.180) ISIC_0013739(Δ+0.182) ISIC_0015944(Δ+0.283)
+        selected_ids=["ISIC_0014284", "ISIC_0015309"],
     ),
     dict(
         name="ISIC-2018",
-        config="configs/rpi_net_isic2018_unsup_v20_sigma_only.yaml",
-        ckpt="outputs/rpi_net_isic2018_unsup_v20_sigma_only/checkpoints/best.pt",
-        threshold=0.13, sigma=0.0, tta="none",
-        fill_holes=False, keep_largest=False,
+        config="configs/rpi_net_isic2018_innovation_rabc.yaml",
+        ckpt="outputs/innovation/rpi_net_isic2018_rabc/checkpoints/best.pt",
+        threshold=0.25, sigma=0.0, tta="flip4",
+        fill_holes=True, keep_largest=True,
         no_tensor_cache=False,
         # 候选: ISIC_0036099(Δ+0.164) ISIC_0036090(Δ+0.162) ISIC_0021147(Δ+0.150) ISIC_0036211(Δ+0.141)
         selected_ids=["ISIC_0015265", "ISIC_0023283"],
     ),
     dict(
         name="PH2",
-        config="configs/rpi_net_ph2_unsup_v20_sigma_only.yaml",
-        ckpt="outputs/rpi_net_ph2_unsup_v20_sigma_only/checkpoints/best.pt",
-        threshold=0.10, sigma=1.0, tta="flip4",
+        config="configs/rpi_net_ph2_innovation_rabc.yaml",
+        ckpt="outputs/innovation/rpi_net_ph2_rabc/checkpoints/best.pt",
+        threshold=0.06, sigma=0.0, tta="flip4",
         fill_holes=True, keep_largest=True,
         no_tensor_cache=False,
         # 候选: IMD378(Δ+0.047) IMD090(Δ+0.037) IMD390(Δ+0.031) IMD177(Δ+0.027)
@@ -180,7 +180,10 @@ def collect_selected_samples(ds_cfg: dict, device: torch.device) -> list[dict]:
     # load model
     ckpt = torch.load(ROOT / ds_cfg["ckpt"], map_location="cpu", weights_only=False)
     state = ckpt.get("model", ckpt.get("model_state_dict", ckpt))
-    model = RPINet(**model_kwargs_from_cfg(cfg))
+    kwargs = model_kwargs_from_cfg(cfg)
+    # Checkpoints contain trained backbone weights; avoid network downloads during rendering.
+    kwargs["backbone_pretrained"] = False
+    model = RPINet(**kwargs)
     model.load_state_dict(state, strict=False)
     model = model.to(device)
     if channels_last:
@@ -214,7 +217,7 @@ def collect_selected_samples(ds_cfg: dict, device: torch.device) -> list[dict]:
         pred_full = postprocess(prob_full, ds_cfg["threshold"], ds_cfg["sigma"],
                                 ds_cfg["fill_holes"], ds_cfg["keep_largest"])
 
-        # P0: τ=0.30, no GPS, no TTA, no postprocess
+        # Raw P0: tau=0.30, no TTA, no post-processing
         prob_raw = torch.sigmoid(model(img_t, None)["logits"])[0, 0].cpu().numpy()
         pred_p0 = postprocess(prob_raw, 0.30, 0.0, False, False)
 
@@ -240,7 +243,7 @@ def make_figure(all_results: list[tuple[str, list[dict]]], out_path: Path):
     n_cols = 5
     n_rows = sum(len(samples) for _, samples in all_results)
 
-    col_titles = ["Image", "Ground Truth", "Ours w/o GPS", "Ours (Full)", "Error Map"]
+    col_titles = ["Image", "Ground Truth", "Raw P0", "RABC-Net", "Error Map"]
     col_colors = ["#111111", "#1a7a1a", "#d06000", "#1a4fcc", "#111111"]
 
     fig, axes = plt.subplots(
@@ -291,7 +294,7 @@ def make_figure(all_results: list[tuple[str, list[dict]]], out_path: Path):
     ]
     fig.legend(handles=legend_items, loc="lower center", ncol=4,
                fontsize=11, frameon=False, bbox_to_anchor=(0.5, -0.04),
-               title="Error Map (Ours Full vs GT)", title_fontsize=11)
+               title="Error Map (RABC-Net vs GT)", title_fontsize=11)
 
     plt.tight_layout(pad=0.5, h_pad=0.4, w_pad=0.3)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -310,7 +313,7 @@ def main():
         samples = collect_selected_samples(ds_cfg, device)
         all_results.append((ds_cfg["name"], samples))
 
-    out_path = ROOT / "paper" / "figures" / "fig7_qualitative_comparison.png"
+    out_path = ROOT / "paper" / "figures" / "fig4_qualitative_comparison.png"
     make_figure(all_results, out_path)
 
 

@@ -400,6 +400,55 @@ def boundary_recall_consistency_loss(
     return (bce * weight).mean()
 
 
+def rabc_delta_direction_loss(
+    delta_map: torch.Tensor,
+    pseudo_labels: torch.Tensor,
+    base_logits: torch.Tensor | None = None,
+    boundary_logits: torch.Tensor | None = None,
+    uncertainty_logits: torch.Tensor | None = None,
+    margin: float = 0.05,
+    boundary_kernel: int = 5,
+    fp_weight: float = 0.5,
+) -> torch.Tensor:
+    """
+    Directly supervise the calibration direction of RABC deltas.
+
+    Positive deltas are encouraged for pseudo-positive boundary pixels where
+    the frozen base prediction is under-confident, while negative deltas are
+    encouraged for pseudo-background boundary pixels where the base prediction
+    is over-confident. This makes the calibration branch learn a directional
+    correction instead of relying only on an indirect refined-logit BCE.
+    """
+    target = pseudo_consensus_map(pseudo_labels)
+    boundary_map = _sobel_mag(target)
+    k = max(1, int(boundary_kernel))
+    if k % 2 == 0:
+        k += 1
+    if k > 1:
+        boundary_map = F.max_pool2d(boundary_map, kernel_size=k, stride=1, padding=k // 2)
+    if boundary_logits is not None:
+        boundary_map = torch.maximum(boundary_map, torch.sigmoid(boundary_logits))
+    if uncertainty_logits is not None:
+        uncertainty_map = torch.sigmoid(uncertainty_logits)
+    else:
+        uncertainty_map = torch.zeros_like(delta_map)
+    if base_logits is not None:
+        base_prob = torch.sigmoid(base_logits.detach())
+    else:
+        base_prob = torch.sigmoid(delta_map.detach() * 0.0)
+
+    reliability = torch.clamp(boundary_map, 0.0, 1.0) * (0.5 + 0.5 * torch.clamp(uncertainty_map, 0.0, 1.0))
+    fn_candidate = target * torch.relu(target - base_prob) * reliability
+    fp_candidate = (1.0 - target) * torch.relu(base_prob - target) * reliability
+
+    margin_t = torch.as_tensor(float(margin), device=delta_map.device, dtype=delta_map.dtype)
+    pos_loss = F.softplus(margin_t - delta_map) * fn_candidate
+    neg_loss = F.softplus(margin_t + delta_map) * fp_candidate
+    pos_denom = fn_candidate.sum() + EPS
+    neg_denom = fp_candidate.sum() + EPS
+    return pos_loss.sum() / pos_denom + float(fp_weight) * neg_loss.sum() / neg_denom
+
+
 def far_background_preservation_loss(
     refined_logits: torch.Tensor,
     pseudo_labels: torch.Tensor,

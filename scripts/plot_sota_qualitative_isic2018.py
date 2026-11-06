@@ -2,7 +2,7 @@
 """Render a qualitative comparison on ISIC-2018 with strong unsupervised references.
 
 Rows: selected ISIC-2018 test cases.
-Cols: Image | GT | RPI-Net | MedSAM | Ours | Error Map
+Cols: Image | GT | RPI-inspired anchor | RABC-Net | Error Map
 """
 from __future__ import annotations
 
@@ -41,7 +41,7 @@ SELECTED_IDS = [
 MODELS = {
     "rpinet": {
         "kind": "rpi",
-        "title": "RPI-Net",
+        "title": "RPI-inspired anchor",
         "color": "#c15600",
         "overlay_rgb": (210, 90, 0),
         "config": ROOT / "configs" / "rpi_net_isic2018_unsup_v17_transfer.yaml",
@@ -51,20 +51,13 @@ MODELS = {
         "fill_holes": False,
         "keep_largest": False,
     },
-    "medsam": {
-        "kind": "medsam",
-        "title": "MedSAM",
-        "color": "#00796b",
-        "overlay_rgb": (0, 121, 107),
-        "threshold": 0.5,
-    },
     "ours": {
         "kind": "rpi",
-        "title": "Ours",
+        "title": "RABC-Net",
         "color": "#1a4fcc",
         "overlay_rgb": (30, 100, 220),
-        "config": ROOT / "configs" / "rpi_net_isic2018_unsup_v20_sigma_only.yaml",
-        "checkpoint": ROOT / "outputs" / "rpi_net_isic2018_unsup_v20_sigma_only" / "checkpoints" / "best.pt",
+        "config": ROOT / "configs" / "rpi_net_isic2018_innovation_rabc.yaml",
+        "checkpoint": ROOT / "outputs" / "innovation" / "rpi_net_isic2018_rabc" / "checkpoints" / "best.pt",
         "threshold": 0.13,
         "tta": "none",
         "fill_holes": False,
@@ -175,7 +168,10 @@ def load_model(spec: dict, device: torch.device) -> dict:
         channels_last = bool(cfg.get("runtime", {}).get("channels_last", True))
         checkpoint = torch.load(spec["checkpoint"], map_location="cpu", weights_only=False)
         state = checkpoint.get("model", checkpoint.get("model_state_dict", checkpoint))
-        model = RPINet(**model_kwargs_from_cfg(cfg))
+        kwargs = model_kwargs_from_cfg(cfg)
+        # The checkpoint contains the trained backbone; avoid network downloads while rendering figures.
+        kwargs["backbone_pretrained"] = False
+        model = RPINet(**kwargs)
         model.load_state_dict(state, strict=False)
         model = model.to(device)
         if channels_last:
@@ -361,7 +357,7 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"device: {device}")
     results = collect_cases(device)
-    render(results, ROOT / "paper" / "figures" / "fig8_sota_qualitative.png")
+    render(results, ROOT / "paper" / "figures" / "fig5_sota_qualitative.png")
 
 
 if __name__ == "__main__":

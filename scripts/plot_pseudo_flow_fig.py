@@ -170,7 +170,7 @@ def compute_interaction_consensus_and_final(
             p = torch.flip(p, dims=[3])
         prob_sum = p if prob_sum is None else (prob_sum + p)
     prob = (prob_sum / 4.0)[0, 0].detach().cpu().numpy()
-    final_mask = postprocess(prob, thr=0.02, sigma=1.0, fill_h=True, keep_largest=True)
+    final_mask = postprocess(prob, thr=0.30, sigma=0.0, fill_h=True, keep_largest=True)
     return consensus_mask, final_mask
 
 
@@ -278,8 +278,8 @@ def build_figure(rows: list[dict], out_path: Path) -> None:
 
 
 def main() -> None:
-    cfg_path = ROOT / "configs" / "rpi_net_isic2017_unsup_v56_ega_bgdecouple_bgsup_recallrefine_headft.yaml"
-    ckpt_path = ROOT / "outputs" / "rpi_net_isic2017_unsup_v56_ega_bgdecouple_bgsup_recallrefine_headft" / "checkpoints" / "best.pt"
+    cfg_path = ROOT / "configs" / "rpi_net_isic2017_innovation_rabc.yaml"
+    ckpt_path = ROOT / "outputs" / "innovation" / "rpi_net_isic2017_rabc_v2" / "checkpoints" / "best.pt"
 
     cfg = load_config(cfg_path)
     data_cfg = cfg["data"]
@@ -301,14 +301,27 @@ def main() -> None:
 
     ckpt = torch.load(ckpt_path, map_location="cpu")
     state = ckpt.get("model", ckpt.get("model_state_dict", ckpt))
-    model = RPINet(**model_kwargs_from_cfg(cfg))
+    kwargs = model_kwargs_from_cfg(cfg)
+    kwargs["backbone_pretrained"] = False
+    model = RPINet(**kwargs)
     model.load_state_dict(state, strict=False)
     model = model.to(device)
     if channels_last:
         model = model.to(memory_format=torch.channels_last)
     model.eval()
 
-    candidates = select_cases(dataset, top_scan=80, keep_rows=3)
+    selected_ids = ["ISIC_0012677", "ISIC_0013879", "ISIC_0014341"]
+    id_to_idx = {rec.image_id: idx for idx, rec in enumerate(dataset.samples)}
+    candidates = []
+    for sid in selected_ids:
+        idx = id_to_idx[sid]
+        rec = dataset.samples[idx]
+        pseudo_path = dataset.pseudo_dir / f"{sid}.npz"
+        masks = np.load(pseudo_path)["masks"].astype(np.float32)
+        p1 = (masks[0] > 0.5).astype(np.uint8)
+        p2 = (masks[1] > 0.5).astype(np.uint8)
+        gt = (dataset._load_mask(rec.mask_path)[0].numpy() > 0.5).astype(np.uint8)
+        candidates.append({"idx": idx, "id": sid, "p1": p1, "p2": p2, "gt": gt, "d1": dice(p1, gt), "d2": dice(p2, gt), "div": 1.0 - iou(p1, p2)})
     enriched = []
     for cand in candidates:
         sample = dataset[cand["idx"]]
@@ -345,7 +358,7 @@ def main() -> None:
     enriched.sort(key=lambda x: x["imp"], reverse=True)
     rows = enriched[:3]
 
-    out_path = ROOT / "paper" / "figures" / "fig9_pseudo_flow.png"
+    out_path = ROOT / "paper" / "figures" / "fig6_pseudo_flow.png"
     build_figure(rows, out_path)
     print("Saved:", out_path)
     print("Selected IDs:", [r["id"] for r in rows])
