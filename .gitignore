@@ -1,4 +1,4 @@
-# Python cache / environments
+# Python cache / environments / build
 __pycache__/
 *.py[cod]
 *.pyo
@@ -10,6 +10,9 @@ __pycache__/
 .venv/
 venv/
 env/
+build/
+dist/
+*.egg-info/
 
 # Local datasets and runtime outputs
 datasets/
@@ -24,13 +27,30 @@ checkpoints/
 *.npz
 *.npy
 
-# Large/generated experiment assets
+# Temporary / scratch / backup files
 *.log
 *.tmp
+*.temp
 *.bak
+*~
 *.swp
+*.swo
+*.swn
+cd.txt
+新建*
+
+# Operating system / WSL metadata
 .DS_Store
 Thumbs.db
+Desktop.ini
+ehthumbs.db
+*Zone.Identifier
+
+# IDE and editor settings
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
 
 # LaTeX build artifacts
 *.aux
@@ -51,33 +71,17 @@ Thumbs.db
 *.run.xml
 *.xdv
 
-# Keep manuscript sources, but ignore generated PDFs/zips by default
-paper/**/*.pdf
-paper/**/*.zip
-paper/**/log.txt
-
-# Tool/runtime state
-.omx/state/
-.omx/logs/
-.omx/notepad.md
+# Tool and agent runtime state
 .claude/
 .codex
-
-# OS / WSL misc
-图/
-
-# Agent/tool local state - do not publish
+.gemini/
 .omx/
+AGENTS.md
 
-# Paper/manuscript workspace is not part of the public code release
-paper/
+# Local manuscript and private assets (not part of the public code release)
 BSPC_new/
 draw/
-cd.txt
-新建 文本文档.txt
-新建*.txt
-configs/generated/review_cmig/
-useful_module/*.pdf
-useful_module/**/.idea/
-AGENTS.md
+paper/
 useful_module/
+图/
+configs/generated/review_cmig/

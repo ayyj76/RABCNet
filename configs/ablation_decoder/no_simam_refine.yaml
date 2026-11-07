@@ -2,9 +2,9 @@ data:
   cache_images: false
   cache_workers: 8
   image_size: 224
-  num_workers: 8
+  num_workers: 4
   persistent_workers: true
-  prefetch_factor: 8
+  prefetch_factor: 2
   root: datasets/ISIC2017
   test_split: test
   train_split: train
@@ -35,7 +35,7 @@ model:
   use_triplet_decoder: true
   use_uncertainty_gated_refine: true
   use_uncertainty_head: true
-output_dir: /home/yyj/skin/outputs/ablation_decoder/no_simam_refine
+output_dir: outputs/ablation_decoder/no_simam_refine
 pseudo:
   batch_size: 8
   force_regenerate: false

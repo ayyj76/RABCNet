@@ -27,7 +27,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from rpi_net.datasets import ISIC2017Dataset
 
 EPS = 1e-7
-MEDSAM_CKPT = "/home/yyj/.cache/medsam"
+MEDSAM_CKPT = Path(os.environ.get("MEDSAM_CKPT", Path.home() / ".cache" / "medsam"))
 
 
 # ───────────────────────────────────────────────────────────────

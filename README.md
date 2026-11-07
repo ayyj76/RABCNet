@@ -235,12 +235,15 @@ STAGE3_CKPT=path/to/stage3_rabc.pt bash scripts/reproduce_isic2018.sh eval
 │   ├── generated/                                   # Multi-seed experiment configs
 │   └── ablation_decoder/                            # Decoder component ablation configs
 ├── src/rpi_net/
-│   ├── datasets/        # Dataset loaders and transforms
-│   ├── losses/          # Uncertainty, boundary, and distillation losses
-│   ├── models/          # ConvNeXt encoder, decoders, IPC/PIA, and RABC calibration modules
-│   ├── pseudo_labels/   # Multi-source pseudo-label generators and consensus logic
-│   └── utils/           # Metrics, logging, checkpointing, and post-processing tools
-└── scripts/             # Execution workflows, training, sweeps, and plotting tools
+│   ├── __init__.py
+│   ├── datasets.py      # Dataset loaders and transforms
+│   ├── losses.py        # Uncertainty, boundary, and distillation losses
+│   ├── metrics.py       # Segmentation evaluation metrics
+│   ├── model.py         # ConvNeXt encoder, decoders, IPC/PIA, and RABC calibration modules
+│   ├── preprocess.py    # Preprocessing pipelines and hair artifact removal
+│   ├── pseudo_labels.py # Multi-source pseudo-label generators and consensus logic
+│   └── utils.py         # Logging, checkpointing, config loading, and utilities
+└── scripts/             # Execution workflows, training, evaluation, complexity, sweeps, and plotting tools
 ```
 
 ### Quick Smoke Test

@@ -30,7 +30,7 @@ from supervised_models import build_model
 EPS = 1e-7
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406], dtype=np.float32)
 IMAGENET_STD = np.array([0.229, 0.224, 0.225], dtype=np.float32)
-MEDSAM_CKPT = Path("/home/yyj/.cache/medsam")
+MEDSAM_CKPT = Path(os.environ.get("MEDSAM_CKPT", Path.home() / ".cache" / "medsam"))
 
 SELECTED_IDS = [
     "ISIC_0024191",

@@ -109,7 +109,7 @@ def generate_configs():
     # Individual leave-one-out
     for name, (flag, label) in INDIVIDUAL_MODULES.items():
         cfg = copy.deepcopy(base)
-        cfg["output_dir"] = str(OUTPUT_ROOT / name)
+        cfg["output_dir"] = f"outputs/ablation_decoder/{name}"
         cfg["model"][flag] = False
         # Adjust related loss weights when disabling modules
         if flag == "use_detail_fusion":
@@ -128,7 +128,7 @@ def generate_configs():
     # Group ablations
     for name, info in GROUP_MODULES.items():
         cfg = copy.deepcopy(base)
-        cfg["output_dir"] = str(OUTPUT_ROOT / name)
+        cfg["output_dir"] = f"outputs/ablation_decoder/{name}"
         for flag in info["flags"]:
             cfg["model"][flag] = False
         # Zero out related losses
