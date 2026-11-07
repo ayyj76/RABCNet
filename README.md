@@ -63,6 +63,29 @@ export PYTHONPATH=src
 
 ---
 
+## Pre-trained Model Checkpoints (GitHub Release)
+
+Official pretrained and target-adapted checkpoints are released on [**GitHub Releases (v1.0.0)**](https://github.com/ayyj76/RABCNet/releases/tag/v1.0.0).
+
+| Model Checkpoint | Dataset & Stage | Description | Download |
+| :--- | :--- | :--- | :---: |
+| `rabc_isic2018_best.pt` | **ISIC-2018 (Stage 3 RABC)** | Full RABC adapted model (DICE ~85.67%, JAC ~79.14%) | [Download](https://github.com/ayyj76/RABCNet/releases/download/v1.0.0/rabc_isic2018_best.pt) |
+| `isic2018_distill_short_best.pt` | **ISIC-2018 (Stage 2 Distill)** | Distilled target prior checkpoint | [Download](https://github.com/ayyj76/RABCNet/releases/download/v1.0.0/isic2018_distill_short_best.pt) |
+| `rabc_isic2017_best.pt` | **ISIC-2017 (Stage 3 RABC)** | RABC calibrated model on ISIC-2017 (DICE ~81.90%, JAC ~72.86%) | [Download](https://github.com/ayyj76/RABCNet/releases/download/v1.0.0/rabc_isic2017_best.pt) |
+| `isic2017_pretrained_best.pt` | **ISIC-2017 (Stage 1 Pretrain)** | Source foundation model used as distillation teacher | [Download](https://github.com/ayyj76/RABCNet/releases/download/v1.0.0/isic2017_pretrained_best.pt) |
+| `rabc_ph2_best.pt` | **PH2 (Stage 3 RABC)** | Full RABC adapted model on PH2 (DICE ~92.17%, JAC ~86.41%) | [Download](https://github.com/ayyj76/RABCNet/releases/download/v1.0.0/rabc_ph2_best.pt) |
+
+To download all release checkpoints at once:
+```bash
+# Using GitHub CLI
+gh release download v1.0.0 --dir checkpoints/
+
+# Or download individual checkpoints with wget, e.g.:
+wget -P checkpoints/ https://github.com/ayyj76/RABCNet/releases/download/v1.0.0/rabc_isic2018_best.pt
+```
+
+---
+
 ## Data Preparation
 
 Datasets are organized under `datasets/` (or customized via YAML configs):
