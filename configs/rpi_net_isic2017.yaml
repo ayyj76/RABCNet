@@ -5,7 +5,7 @@ data:
   root: datasets/ISIC2017
   image_size: 224
   use_hair_removal: false
-  use_tensor_cache: true
+  use_tensor_cache: false
   tensor_cache_dir: outputs/tensor_cache/isic2017
   train_split: train
   val_split: val

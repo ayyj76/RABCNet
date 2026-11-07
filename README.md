@@ -174,7 +174,8 @@ Optimal decision thresholds and morphological post-processing parameters are dis
 ```bash
 PYTHONPATH=src python3 scripts/select_inference_by_val.py \
   --config configs/rpi_net_isic2018_innovation_rabc.yaml \
-  --checkpoint outputs/innovation/rpi_net_isic2018_rabc/checkpoints/best.pt
+  --checkpoint outputs/innovation/rpi_net_isic2018_rabc/checkpoints/best.pt \
+  --output outputs/innovation/rpi_net_isic2018_rabc/select_val.json
 ```
 
 ### 2. Test Split Evaluation

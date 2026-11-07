@@ -107,7 +107,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--min-acc", type=float, default=None, help="Optional minimum ACC constraint on val (0-1)")
     parser.add_argument("--workers", type=int, default=None)
     parser.add_argument("--batch-size", type=int, default=None)
-    parser.add_argument("--output", type=str, required=True)
+    parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Path to save selection results JSON (default: <checkpoint_dir>/select_val.json)",
+    )
     return parser.parse_args()
 
 
@@ -447,7 +452,7 @@ def main() -> None:
         "n_rows": len(rows),
         "best": best,
     }
-    out_path = Path(args.output)
+    out_path = Path(args.output) if args.output else Path(args.checkpoint).parent / "select_val.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps({"summary": out, "rows": rows}, indent=2), encoding="utf-8")
     print(f"saved: {out_path}")
