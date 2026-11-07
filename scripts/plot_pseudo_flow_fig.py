@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -277,9 +278,18 @@ def build_figure(rows: list[dict], out_path: Path) -> None:
     plt.close(fig)
 
 
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Generate Fig 6: pseudo flow and consensus visualization")
+    p.add_argument("--config", default=str(ROOT / "configs" / "rpi_net_isic2017_innovation_rabc.yaml"), help="Config path")
+    p.add_argument("--checkpoint", default=str(ROOT / "outputs" / "innovation" / "rpi_net_isic2017_rabc_v2" / "checkpoints" / "best.pt"), help="Checkpoint path")
+    p.add_argument("--output", default=str(ROOT / "paper" / "figures" / "fig6_pseudo_flow.png"), help="Output PNG path")
+    return p.parse_args()
+
+
 def main() -> None:
-    cfg_path = ROOT / "configs" / "rpi_net_isic2017_innovation_rabc.yaml"
-    ckpt_path = ROOT / "outputs" / "innovation" / "rpi_net_isic2017_rabc_v2" / "checkpoints" / "best.pt"
+    args = parse_args()
+    cfg_path = Path(args.config)
+    ckpt_path = Path(args.checkpoint)
 
     cfg = load_config(cfg_path)
     data_cfg = cfg["data"]
@@ -358,7 +368,7 @@ def main() -> None:
     enriched.sort(key=lambda x: x["imp"], reverse=True)
     rows = enriched[:3]
 
-    out_path = ROOT / "paper" / "figures" / "fig6_pseudo_flow.png"
+    out_path = Path(args.output)
     build_figure(rows, out_path)
     print("Saved:", out_path)
     print("Selected IDs:", [r["id"] for r in rows])

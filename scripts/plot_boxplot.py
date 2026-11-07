@@ -2,6 +2,7 @@
 """Draw per-sample metric distributions for the current RABC-Net checkpoints."""
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -262,7 +263,14 @@ def make_figure(all_metrics: list[dict[str, np.ndarray]], ds_names: list[str], o
     print(f"[done] saved: {out_path}")
 
 
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Draw per-sample metric distributions for RABC-Net checkpoints")
+    p.add_argument("--output", default=str(ROOT / "paper" / "figures" / "fig9_metric_boxplot.png"), help="Output PNG path")
+    return p.parse_args()
+
+
 def main() -> None:
+    args = parse_args()
     torch.set_num_threads(min(8, max(1, torch.get_num_threads())))
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"device: {device}\n")
@@ -271,7 +279,7 @@ def main() -> None:
         print(f"--- {ds_cfg['name']} ---")
         all_metrics.append(collect_metrics(ds_cfg, device))
         ds_names.append(ds_cfg["name"])
-    make_figure(all_metrics, ds_names, ROOT / "paper" / "figures" / "fig9_metric_boxplot.png")
+    make_figure(all_metrics, ds_names, Path(args.output))
 
 
 if __name__ == "__main__":

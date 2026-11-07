@@ -1,5 +1,5 @@
 """
-Compute model complexity metrics for RPINet (v20sigma config).
+Compute model complexity metrics for RABC-Net:
   - Total / trainable parameter counts
   - FLOPs for a single 224x224 input
   - Inference speed (FPS) on CPU and GPU
@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from rpi_net.model import RPINet
 
 # ------------------------------------------------------------------ #
-# 1.  Model kwargs matching v20sigma config (model: section)
+# 1.  Model kwargs matching RABC-Net config (model: section)
 # ------------------------------------------------------------------ #
 MODEL_KWARGS = dict(
     hidden_dim=128,
@@ -51,6 +51,7 @@ MODEL_KWARGS = dict(
     use_ega_refine=False,
     use_cot_context=False,
     use_lsk_decoder=False,
+    use_rabc=True,
 )
 
 
@@ -156,7 +157,7 @@ def measure_fps(model, image, pseudo, device, warmup=10, runs=50):
 
 def main():
     print("=" * 72)
-    print("  RPI-Net++ Model Complexity Analysis  (v20sigma config)")
+    print("  RABC-Net Model Complexity Analysis")
     print("=" * 72)
 
     # ------------------------------------------------------------------ #
@@ -166,7 +167,7 @@ def main():
     model.eval()
 
     total, trainable = count_parameters(model)
-    print(f"\n{'--- Parameter Counts (Full RPINet) ---':^72}")
+    print(f"\n{'--- Parameter Counts (Full RABC-Net) ---':^72}")
     print(f"  Total params:      {fmt(total)}")
     print(f"  Trainable params:  {fmt(trainable)}")
 
@@ -220,6 +221,7 @@ def main():
         "Uncertainty Head":         model.uncertainty_head,
         "Head-Guided Refine":       model.head_guided_refine,
         "Uncertainty-Gated Refine": model.uncertainty_gated_refine,
+        "RABC Calibration Head":    model.rabc,
     }
 
     for name, module in components.items():
@@ -314,8 +316,8 @@ def main():
     print(f"{'=' * 72}")
     print(f"  {'Metric':<40s} {'Value':>28s}")
     print(f"  {'-'*40:<40s} {'-'*28:>28s}")
-    print(f"  {'RPINet Total Params':<40s} {total / 1e6:>24.2f} M")
-    print(f"  {'RPINet Trainable Params':<40s} {trainable / 1e6:>24.2f} M")
+    print(f"  {'RABC-Net Total Params':<40s} {total / 1e6:>24.2f} M")
+    print(f"  {'RABC-Net Trainable Params':<40s} {trainable / 1e6:>24.2f} M")
     print(f"  {'ConvNeXt-Tiny Params':<40s} {bb_total / 1e6:>24.2f} M")
     print(f"  {'Decoder/Head Overhead':<40s} {overhead / 1e6:>24.2f} M")
     if result_img:

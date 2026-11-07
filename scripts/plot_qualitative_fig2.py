@@ -7,6 +7,7 @@ Samples are specified by ID from pre-selected candidates.
 """
 from __future__ import annotations
 
+import argparse
 import sys
 from pathlib import Path
 
@@ -303,7 +304,14 @@ def make_figure(all_results: list[tuple[str, list[dict]]], out_path: Path):
     print(f"\n[done] saved: {out_path}")
 
 
+def parse_args() -> argparse.Namespace:
+    p = argparse.ArgumentParser(description="Fig 2: Qualitative segmentation comparison across datasets")
+    p.add_argument("--output", default=str(ROOT / "paper" / "figures" / "fig4_qualitative_comparison.png"), help="Output PNG path")
+    return p.parse_args()
+
+
 def main():
+    args = parse_args()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"device: {device}\n")
 
@@ -313,7 +321,7 @@ def main():
         samples = collect_selected_samples(ds_cfg, device)
         all_results.append((ds_cfg["name"], samples))
 
-    out_path = ROOT / "paper" / "figures" / "fig4_qualitative_comparison.png"
+    out_path = Path(args.output)
     make_figure(all_results, out_path)
 
 
