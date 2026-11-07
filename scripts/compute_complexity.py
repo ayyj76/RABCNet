@@ -9,6 +9,7 @@ Compute model complexity metrics for RPINet (v20sigma config).
 import sys
 import time
 import warnings
+from pathlib import Path
 
 import torch
 import torch.nn as nn
@@ -16,7 +17,8 @@ import torch.nn as nn
 warnings.filterwarnings("ignore")
 
 # ---- make project importable ----
-sys.path.insert(0, "/home/yyj/skin/src")
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
 from rpi_net.model import RPINet
 
 # ------------------------------------------------------------------ #

@@ -240,8 +240,7 @@ STAGE3_CKPT=path/to/stage3_rabc.pt bash scripts/reproduce_isic2018.sh eval
 │   ├── models/          # ConvNeXt encoder, decoders, IPC/PIA, and RABC calibration modules
 │   ├── pseudo_labels/   # Multi-source pseudo-label generators and consensus logic
 │   └── utils/           # Metrics, logging, checkpointing, and post-processing tools
-├── scripts/             # Execution workflows, training, sweeps, and plotting tools
-└── draw/                # Manuscript plotting and visualization scripts
+└── scripts/             # Execution workflows, training, sweeps, and plotting tools
 ```
 
 ### Quick Smoke Test

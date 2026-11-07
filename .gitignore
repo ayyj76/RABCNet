@@ -72,11 +72,11 @@ paper/**/log.txt
 # Paper/manuscript workspace is not part of the public code release
 paper/
 BSPC_new/
+draw/
 cd.txt
 新建 文本文档.txt
+新建*.txt
 configs/generated/review_cmig/
-draw/figs/
-draw/results/
 useful_module/*.pdf
 useful_module/**/.idea/
 AGENTS.md
