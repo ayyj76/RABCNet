@@ -168,8 +168,10 @@ Output checkpoint: `outputs/rpi_net_isic2017_unsup_v17_msaa/checkpoints/best.pt`
 Distill the segmentation prior from the frozen Stage 1 source teacher to the target domain (ISIC-2018). We employ a compact distillation schedule (`v19_distill_short.yaml`: 6 epochs, teacher retention weight `source_distill_weight: 0.80`, no self-training feedback rounds) to transfer clean source features without letting noisy target pseudo-labels drift the representation:
 
 ```bash
+# Student model is initialized from Stage 1 source foundation:
 PYTHONPATH=src python3 scripts/train_rpi_net.py \
-  --config configs/rpi_net_isic2018_unsup_v19_distill_short.yaml
+  --config configs/rpi_net_isic2018_unsup_v19_distill_short.yaml \
+  --resume outputs/rpi_net_isic2017_unsup_v17_msaa/checkpoints/best.pt
 ```
 Output checkpoint: `outputs/rpi_net_isic2018_unsup_v19_distill_short/checkpoints/best.pt`.
 

@@ -124,9 +124,10 @@ run_stage2() {
         --config "$CFG_STAGE2" \
         --split train
 
-    log_info "Running distillation training on ISIC-2018 with Stage 1 teacher: $CKPT_STAGE1..."
+    log_info "Running distillation training on ISIC-2018 (student initialized from Stage 1 teacher: $CKPT_STAGE1)..."
     python3 scripts/train_rpi_net.py \
-        --config "$CFG_STAGE2"
+        --config "$CFG_STAGE2" \
+        --resume "$CKPT_STAGE1"
 
     if [[ ! -f "$CKPT_STAGE2" ]]; then
         log_error "Stage 2 checkpoint not found at: $CKPT_STAGE2"
